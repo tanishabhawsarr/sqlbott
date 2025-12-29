@@ -1,0 +1,13 @@
+import os
+
+DB_CONFIG = {
+    "SERVER": os.getenv("DB_SERVER"),
+    "DATABASE": os.getenv("DB_NAME")
+}
+
+AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
+
+AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
