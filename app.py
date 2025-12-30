@@ -118,33 +118,53 @@ def health():
     return {"status": "ok"}
 
 # ---------------- MAIN API ----------------
-@app.route("/query", methods=["POST"])
+@app.route("/query", methods=["POST","GET"])
 def query():
-    data = request.json
-    question = data.get("question")
-    email = data.get("emailid")
+    try:
+        data = request.get_json(force=True)
+        print("Incoming data:", data)
 
-    if not question or not email:
-        return jsonify({"error": "question and emailid required"}), 400
+        question = data.get("question")
+        email = data.get("emailid")
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        if not question or not email:
+            return jsonify({
+                "error": "Both 'question' and 'emailid' are required"
+            }), 400
 
-    # Set RLS context
-    cursor.execute("""
-        EXEC sys.sp_set_session_context
-            @key=N'emailid',
-            @value=?
-    """, (email,))
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    schema = get_schema_info(cursor)
-    sql = generate_sql(question, schema)
-    result = execute_sql(sql, cursor)
+        # 🔐 Set RLS context
+        cursor.execute("""
+            EXEC sys.sp_set_session_context
+                @key=N'emailid',
+                @value=?
+        """, (email,))
 
-    return jsonify({
-        "sql": sql,
-        "result": result
-    })
+        cursor.execute("SELECT SESSION_CONTEXT(N'emailid')")
+        print("Session email:", cursor.fetchone())
+
+        schema = get_schema_info(cursor)
+
+        sql = generate_sql(question, schema)
+        print("Generated SQL:", sql)
+
+        result = execute_sql(sql, cursor)
+
+        return jsonify({
+            "sql": sql,
+            "result": result
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
