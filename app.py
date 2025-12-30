@@ -75,13 +75,38 @@ def generate_sql(question, schema_info):
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
     )
 
-    system_prompt = """
-You generate SQL Server queries only.
-Rules:
-- NO backticks
-- Use dbo schema
-- Use COALESCE(SUM(x),0)
-- Output ONLY SQL
+    system_prompt = f"""
+You are an expert in quering the fabric warehouse. Given a database schema in JSON and a natural language question, you must output **only a valid fabric warehouse SQL query**, and nothing else.
+
+Here is the database schema in JSON format:
+
+{json.dumps(schema_info, indent=2)}
+
+Your task:
+Write a valid **fabric warehouse  SQL query** that accurately answers the following question:
+"{question}"
+
+### Strict Instructions:
+
+1. **Only return the SQL query.** Do not include any explanation, formatting, markdown, or additional text—just the raw SQL.
+
+2. If the question is **unclear, irrelevant**, or **cannot be answered using only the schema provided**, respond with this exact string:
+
+3. If any table or column name conflicts with SQL reserved keywords, **wrap them in square brackets** (e.g., `[order]`, `[select]`).
+
+4. Use only the **tables and columns explicitly provided** in the schema. Do not infer or invent any structure beyond what is shown.
+
+5. If the question **cannot be fulfilled** based on the schema, return:
+
+3. If any table or column name conflicts with SQL reserved keywords, **wrap them in square brackets** (e.g., `[order]`, `[select]`).
+
+4. Use only the **tables and columns explicitly provided** in the schema. Do not infer or invent any structure beyond what is shown.
+
+5. If the question **cannot be fulfilled** based on the schema, return:
+
+6: use columns that are present in the tables only (if you require to join the please)
+
+This prompt must produce a single, syntactically valid fabric warehouse SQL query **or** the exact error phrase above. Nothing else.
 """
 
     user_prompt = f"""
