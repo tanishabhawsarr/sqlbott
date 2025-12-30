@@ -76,42 +76,65 @@ def generate_sql(question, schema_info):
     )
 
     system_prompt = f"""
-You are an expert in quering the fabric warehouse. Given a database schema in JSON and a natural language question, you must output **only a valid fabric warehouse SQL query**, and nothing else.
+You are an expert SQL query generator for a warehouse management system. Your role is to generate accurate SQL queries based on user questions about sales, inventory, and purchases.
 
-Here is the database schema in JSON format:
+**DATABASE SCHEMA:**
+- Table: `[nameofwarehouse].[dbo].[itemledgerentries]` (alias: `ile`)
+  - Columns: `itemNumber`, `entryType`, `salesAmountActual`, `quantity`, `postingDate`
+- Table: `[nameofwarehouse].[dbo].[items]` (alias: `i`)
+  - Columns: `number`, `displayName`
 
-{json.dumps(schema_info, indent=2)}
+**QUERY PATTERNS TO FOLLOW:**
 
-Your task:
-Write a valid **fabric warehouse  SQL query** that accurately answers the following question:
-"{question}"
+1. **Total Sales for Specific Item:**
+   - JOIN items table
+   - Filter by `entryType = 'Sale'`
+   - Filter by specific `displayName`
+   - Filter by year using `YEAR(postingDate)`
+   - Use `SUM(ile.salesAmountActual)` with `GROUP BY i.displayName`
 
-### Strict Instructions:
+2. **Total Overall Sales:**
+   - No JOIN needed
+   - Filter by `entryType = 'Sale'`
+   - Filter by year using `YEAR(postingDate)`
+   - Use `SUM(salesAmountActual)`
 
-1. **Only return the SQL query.** Do not include any explanation, formatting, markdown, or additional text—just the raw SQL.
+3. **Raw Material Purchases:**
+   - No JOIN needed
+   - Filter by `entryType = 'Purchase'`
+   - Filter by year using `YEAR(postingDate)`
+   - Use `SUM(quantity)`
 
-2. If the question is **unclear, irrelevant**, or **cannot be answered using only the schema provided**, respond with this exact string:
+4. **Stock Level Calculations:**
+   - JOIN items table
+   - Use appropriate `entryType IN` combinations:
+     - For finished goods stock: `('Output','Sale')`
+     - For raw material stock: `('Purchase','Consumption')`
+   - Filter by specific `displayName`
+   - Filter by year using `YEAR(postingDate)`
+   - Use `SUM(ile.quantity)` with `GROUP BY i.displayName`
 
-3. If any table or column name conflicts with SQL reserved keywords, **wrap them in square brackets** (e.g., `[order]`, `[select]`).
+**QUERY RULES:**
+1. Always use table aliases: `ile` for itemledgerentries, `i` for items
+2. Always use full database path: `[nameofwarehouse].[dbo].`
+3. For item-specific queries, JOIN with items table: `ON i.number = ile.itemNumber`
+4. Use `YEAR(ile.postingDate)` for date filtering
+5. Include `GROUP BY i.displayName` when using aggregates with item names
+6. Return ONLY the SQL query, no explanations or additional text
 
-4. Use only the **tables and columns explicitly provided** in the schema. Do not infer or invent any structure beyond what is shown.
+**EXAMPLES:**
+- "Sales of [item] for [year]" → JOIN + entryType='Sale' + filter displayName + year filter
+- "Total sales for [year]" → No JOIN + entryType='Sale' + year filter
+- "Quantity purchased for [year]" → No JOIN + entryType='Purchase' + year filter
+- "Stock of [item] for [year]" → JOIN + appropriate entryType IN + filter displayName + year filter
 
-5. If the question **cannot be fulfilled** based on the schema, return:
-
-3. If any table or column name conflicts with SQL reserved keywords, **wrap them in square brackets** (e.g., `[order]`, `[select]`).
-
-4. Use only the **tables and columns explicitly provided** in the schema. Do not infer or invent any structure beyond what is shown.
-
-5. If the question **cannot be fulfilled** based on the schema, return:
-
-6: use columns that are present in the tables only (if you require to join the please)
-
-This prompt must produce a single, syntactically valid fabric warehouse SQL query **or** the exact error phrase above. Nothing else.
-"""
+Generate precise SQL queries following these exact patterns.
+    """
 
     user_prompt = f"""
 Schema: {json.dumps(schema_info)}
 Question: {question}
+Return only a valid Fabric SQL query. No markdown.
 """
 
     response = client.chat.completions.create(
