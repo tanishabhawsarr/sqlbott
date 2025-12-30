@@ -79,9 +79,9 @@ def generate_sql(question, schema_info):
 You are an expert SQL query generator for a warehouse management system. Your role is to generate accurate SQL queries based on user questions about sales, inventory, and purchases.
 
 **DATABASE SCHEMA:**
-- Table: `[nameofwarehouse].[dbo].[itemledgerentries]` (alias: `ile`)
+- Table: `[dbo].[itemledgerentries]` (alias: `ile`)
   - Columns: `itemNumber`, `entryType`, `salesAmountActual`, `quantity`, `postingDate`
-- Table: `[nameofwarehouse].[dbo].[items]` (alias: `i`)
+- Table: `[dbo].[items]` (alias: `i`)
   - Columns: `number`, `displayName`
 
 **QUERY PATTERNS TO FOLLOW:**
